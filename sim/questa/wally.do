@@ -160,15 +160,15 @@ if {$PlusArgsIndex >= 0} {
 }
 
 # Set ParamArgs passed using the --params flag and expand into a list of -G<param> arguments
+# ---- DISABLE --params HANDLING (breaks gate-level sim Tcl parsing) ----
 set ParamArgsIndex [lsearch -exact $lst "--params"]
 if {$ParamArgsIndex >= 0} {
-    set ParamArgs [lindex $lst [expr {$ParamArgsIndex + 1}]]
-    set ParamArgs [regexp -all -inline {\S+} $ParamArgs]
-    foreach param $ParamArgs {
-        lappend ExpandedParamArgs -G$param
-    }
+    # remove --params and its argument from list, but do NOT generate -G options
     set lst [lreplace $lst $ParamArgsIndex [expr {$ParamArgsIndex + 1}]]
 }
+
+
+
 
 # Set +define macros passed using the --define flag
 set DefineArgsIndex [lsearch -exact $lst "--define"]
@@ -198,7 +198,15 @@ if {$DEBUG > 0} {
 # because vsim will run vopt
 set INC_DIRS "+incdir+${CONFIG}/${CFG} +incdir+${CONFIG}/deriv/${CFG} +incdir+${CONFIG}/shared"
 if {${GATE_SIM} > 0 } {
-    set SOURCES "${SRC}/cvw.sv ${TB}/${TESTBENCH}.sv ${TB}/common/*.sv ${SRC}/*/*.sv ${SRC}/*/*/*.sv ${GATE}/*.v ${GATE}/*.sv ${WALLY}/addins/verilog-ethernet/*/*.sv ${WALLY}/addins/verilog-ethernet/*/*/*/*.sv"
+    set SOURCES "${SRC}/cvw.sv \
+                 ${TB}/${TESTBENCH}.sv \
+                 ${TB}/common/*.sv \
+                 ${SRC}/*/*.sv \
+                 ${SRC}/*/*/*.sv \
+                 ${GATE}/techLib.v \
+                 ${GATE}/wallypipelinedcore.sv \
+                 ${WALLY}/addins/verilog-ethernet/*/*.sv \
+                 ${WALLY}/addins/verilog-ethernet/*/*/*/*.sv"
 } else {
     set SOURCES "${SRC}/cvw.sv ${TB}/${TESTBENCH}.sv ${TB}/common/*.sv ${SRC}/*/*.sv ${SRC}/*/*/*.sv ${WALLY}/addins/verilog-ethernet/*/*.sv ${WALLY}/addins/verilog-ethernet/*/*/*/*.sv"
 }

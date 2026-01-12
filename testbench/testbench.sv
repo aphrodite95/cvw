@@ -47,7 +47,7 @@ module testbench;
   parameter I_CACHE_ADDR_LOGGER=0;
   parameter D_CACHE_ADDR_LOGGER=0;
   parameter RVVI_SYNTH_SUPPORTED=0;
-  parameter MAKE_VCD=0;
+  parameter MAKE_VCD=1;
 
   // TREK Requires a license for the Breker tool. See tests/breker/README.md for details
   `ifdef USE_TREK_DV
