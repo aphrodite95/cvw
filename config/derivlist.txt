@@ -1499,3 +1499,18 @@ ICACHE_SUPPORTED        1
 U_SUPPORTED             1
 ZICBOM_SUPPORTED        1
 ZICBOZ_SUPPORTED        1
+
+
+syn_polito_rv32e_m       rv32e
+M_SUPPORTED             1
+ZMMUL_SUPPORTED         1
+DTIM_RANGE              64'h1FF
+IROM_RANGE              64'h1FF
+BOOTROM_RANGE           64'h1FF
+UNCORE_RAM_RANGE        64'h1FFFFFFF
+DCACHE_WAYSIZEINBYTES   32'd512
+ICACHE_WAYSIZEINBYTES   32'd512
+DCACHE_NUMWAYS          32'd1
+ICACHE_NUMWAYS          32'd1
+BPRED_SIZE              32'd5
+BTB_SIZE                32'd5
