@@ -1,11 +1,11 @@
 sbst.objdump: sbst.elf
 	/opt/cvw_toolchain/bin/riscv64-unknown-elf-objdump -D sbst.elf > sbst.objdump
 
-sbst.elf: sbst.S vectors.S Makefile
+sbst.elf: sbst_regfile_mdu.S vectors.S Makefile
 	/opt/cvw_toolchain/bin/riscv64-unknown-elf-gcc -o sbst.elf \
 	-march=rv32im_zicsr -mabi=ilp32 -mcmodel=medany \
 	-nostartfiles -T../../link/link_sbst.ld \
-	sbst.S vectors.S
+	sbst_regfile_mdu.S vectors.S
 
 
 clean:
