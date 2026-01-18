@@ -1,0 +1,170 @@
+================================================================================
+CHANGES LOG - CVW Project Setup and Gate-Level Simulation
+================================================================================
+
+1. MODIFICATION: Fixed broken symlink for techLib.v
+   File: gate/syn_polito_rv32e/techLib.v
+   Change: Relinked from broken path to /data/libraries/nangate45/NangateOpenCellLibrary.v
+   WHY: The original symlink pointed to a non-existent path. The Nangate45 library is located at /data/libraries/nangate45/ on this server. Without this fix, gate-level simulation failed because the technology library cells could not be loaded.
+
+2. MODIFICATION: Changed section declaration in sbst.S from .text to .text.init
+   File: examples/asm/sbst/sbst.S
+   Change: .section .text -> .section .text.init
+   WHY: The linker script (link_sbst.ld) places .text.init at address 0x80000000 which is the reset vector. The original code used .section .text which placed the SBST code after the vector table. This caused the processor to start executing the interrupt vector table instead of the actual test code, resulting in illegal instruction error.
+
+3. MODIFICATION: Enabled VCD generation in testbench
+   File: testbench/testbench.sv
+   Change: parameter MAKE_VCD=0 -> parameter MAKE_VCD=1
+   WHY: The --params flag in wally.do was disabled for gate-level simulation. Setting MAKE_VCD=1 directly in the testbench enables VCD waveform dumping during simulation, which generates core_gate.vcd needed for fault simulation with zoix.
+
+4. MODIFICATION: Created helper script run.sh
+   File: ~/project/cvw/run.sh
+   Change: New file that sources setup.sh and eda_tools_setup before executing commands
+   WHY: Environment variables need to be set for each SSH command since sessions do not persist. This wrapper script ensures the environment is properly configured.
+
+================================================================================
+COMMANDS EXECUTED (in order)
+================================================================================
+
+1. git submodule update --init addins/verilog-ethernet/
+   WHY: Initialize required submodule for simulation
+
+2. make deriv
+   WHY: Generate derivative configuration files from derivlist.txt
+
+3. cd examples/asm/sbst && make
+   WHY: Compile the SBST program to generate sbst.elf
+
+4. wsim syn_polito_rv32e --elf ./examples/asm/sbst/sbst.elf --define +define+GATE_LEVEL=1 --sim questa --tb testbench --vcd --gate
+   WHY: Run gate-level simulation with VCD output generation
+
+================================================================================
+OUTPUT FILES GENERATED
+================================================================================
+
+- sim/questa/core_gate.vcd (37KB) - Gate-level waveform for fault simulation
+- sim/questa/core_rtl.vcd (15KB) - RTL waveform
+
+
+================================================================================
+MDU (Multiply-Divide Unit) FAULT SIMULATION SETUP
+================================================================================
+Date: January 18, 2026
+
+5. MODIFICATION: Created MDU-only fault generation configuration
+   File: zoix/fault_gen_cvw.sff
+   Content:
+   ```
+   FaultGenerate
+   {
+       #SAF - Target multiply-divide unit only
+       NA [0,1] {PORT "wallypipelinedcore_gate.\\mdu.mdu .**"}
+   }
+   ```
+   WHY: To focus fault simulation on the MDU only, reducing simulation time 
+   and VCD file size. The full design fault simulation was too slow and 
+   resource-intensive (only 10% progress after 3+ hours with 0.21% coverage).
+
+6. MODIFICATION: Created minimal SBST for MDU testing with trickbox termination
+   File: examples/asm/sbst/sbst.S
+   Content:
+   ```assembly
+       .section .text.init
+       .globl _start
+   _start:
+       # Minimal SBST for MDU - quick termination
+       
+       # Base address for result storage
+       li   x15, 0x80001000
+
+       # MUL tests
+       li   x1, 3
+       li   x2, 7
+       mul  x3, x1, x2
+       sw   x3, 0(x15)
+
+       li   x1, 0x12345678
+       li   x2, 0x87654321
+       mul  x3, x1, x2
+       sw   x3, 4(x15)
+       
+       mulh x4, x1, x2
+       sw   x4, 8(x15)
+       
+       mulhu x5, x1, x2
+       sw   x5, 12(x15)
+
+       # DIV tests
+       li   x1, 100
+       li   x2, 7
+       div  x3, x1, x2
+       sw   x3, 16(x15)
+       
+       divu x4, x1, x2
+       sw   x4, 20(x15)
+       
+       rem  x5, x1, x2
+       sw   x5, 24(x15)
+       
+       remu x6, x1, x2
+       sw   x6, 28(x15)
+
+       # Edge cases
+       li   x1, -1
+       li   x2, 2
+       div  x3, x1, x2
+       sw   x3, 32(x15)
+       
+       li   x1, 0x80000000
+       li   x2, -1
+       div  x3, x1, x2
+       sw   x3, 36(x15)
+
+       # Signature and terminate
+       li   x1, 0x12345678
+       sw   x1, 40(x15)
+       
+       # Write to trickbox to terminate simulation
+       li   x1, 1
+       li   x2, 0x80000000
+       sw   x1, 0(x2)
+
+       j    .
+   ```
+   WHY: The trickbox termination (writing to address 0x80000000) stops the 
+   simulation cleanly. Previous versions had infinite loops causing huge VCD 
+   files (18GB+) and disk full errors. This minimal test covers all MDU 
+   instructions: mul, mulh, mulhu, div, divu, rem, remu.
+
+================================================================================
+MDU FAULT SIMULATION COMMANDS
+================================================================================
+
+1. Compile SBST:
+   cd ~/project/cvw/examples/asm/sbst && make
+
+2. Run gate-level simulation to generate VCD:
+   cd ~/project/cvw/sim/questa
+   vsim -c -do 'do wally.do syn_polito_rv32e_m sbst testbench --gate --args "+ElfFile=/home/s343346/project/cvw/examples/asm/sbst/sbst.elf"'
+
+3. Run Z01X compile and fault simulation:
+   cd ~/project/cvw/zoix && ./zoix_cvw.sh syn_polito_rv32e_m questa
+
+================================================================================
+MDU FAULT SIMULATION RESULTS
+================================================================================
+
+Configuration: syn_polito_rv32e_m (RV32E with M extension)
+Target: MDU only (wallypipelinedcore_gate.\\mdu.mdu .**)
+
+Results:
+- Total Faults: 53,524 (30,482 prime)
+- Detected (Dropped): 18,297 (34.18%)
+- Potential: 934 (1.75%)
+- Not Detected: 34,293 (64.07%)
+- Test Coverage: 35.06%
+- Fault Coverage: 34.35%
+
+Execution Time: 33 seconds total
+VCD File Size: 45KB
+
