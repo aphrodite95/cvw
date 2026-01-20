@@ -1,5 +1,12 @@
 FaultGenerate
 {
-    #SAF - Target multiply-divide unit only
-    NA [0,1] {PORT "wallypipelinedcore_gate.\\mdu.mdu .**"}
+    #SAF - Target only register file
+        NA [0,1] {PORT "wallypipelinedcore_gate.ieu.dp.regf.**"}
+
+	NA [0,1] {PORT "wallypipelinedcore_gate.\\mdu.mdu.**"}
+
+    #TDF
+        NA [R,F] {PORT "wallypipelinedcore_gate.ieu.dp.regf.**"}
+
+	NA [R,F] {PORT "wallypipelinedcore_gate.\\mdu.mdu.**"}
 }
