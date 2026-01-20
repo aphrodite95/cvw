@@ -1,13 +1,14 @@
-#!/bin/bash
+#\!/bin/bash
 
-# CVW Fault Simulation Script
+# CVW Fault Simulation Script for MDU
 # Usage: ./run_fault_sim.sh
-
-set -e
+# This script runs the complete fault simulation flow
 
 cd ~/project/cvw
-source setup.sh
-source eda_tools_setup
+source setup.sh || true
+source eda_tools_setup || true
+
+set -e  # Exit on error from here onwards
 
 echo "=== Step 1: Initialize submodules ==="
 git submodule update --init addins/verilog-ethernet/
@@ -16,22 +17,22 @@ echo "=== Step 2: Generate derivative config ==="
 make deriv
 
 echo "=== Step 3: Compile SBST ==="
-cd examples/asm/sbst
+cd ~/project/cvw/examples/asm/sbst
 make clean
 make
 cd ~/project/cvw
 
-echo "=== Step 4: Run synthesis ==="
-cd synthDC
-./wallySynth_polito.py --tech nangate45 -t 1500 -v syn_polito_rv32e_m -c 16
-cd ~/project/cvw
-
-echo "=== Step 5: Run gate-level simulation ==="
+echo "=== Step 4: Run gate-level simulation ==="
 wsim syn_polito_rv32e_m --elf ./examples/asm/sbst/sbst.elf --define +define+GATE_LEVEL=1 --sim questa --tb testbench --vcd --gate
 
-echo "=== Step 6: Run fault simulation with zoix ==="
-cd zoix
-./zoix_cvw.sh syn_polito_rv32e_m
+echo "=== Step 5: Run fault simulation with Z01X ==="
+cd ~/project/cvw/zoix
+./zoix_cvw.sh syn_polito_rv32e_m questa
 
+echo ""
 echo "=== Done ==="
-echo "Reports: zoix/run_zoix/cvw_coverage.sff"
+echo "Fault simulation complete\!"
+echo "Reports located at: ~/project/cvw/zoix/run_zoix/"
+echo "  - sim.rpt              : Detailed fault report"  
+echo "  - testability.txt      : Coverage summary"
+echo "  - fmsh.log             : Simulation log"
